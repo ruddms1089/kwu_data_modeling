@@ -1,0 +1,30 @@
+import requests
+from bs4 import BeautifulSoup
+from service.news_servise import collect_news
+
+# 다음뉴스 1page -> 15 news
+#  - 페이지를 돌면서 수집 => 끝날 때까지
+page = 1
+count = 0
+while True:
+    print(f"{page}page" + "■" * 50)
+    url = f"https://news.daum.net/breakingnews/digital?page={page}"
+    print(url)
+    result: requests = requests.get(url)
+    print(result)
+    print(result.text)
+    soup = BeautifulSoup(result.text, features="html.parser")
+    link_list = soup.select("ul.list_news2 a.link_txt")
+    print(link_list)
+    print(len(link_list))
+    if len(link_list) == 0:
+        break
+    for i, link in enumerate(link_list):
+        new_url = link["href"]
+        print("#" * 50)
+        print(f"{i + 1} URL -> {new_url}")
+        collect_news(new_url)
+        count += 1
+    page += 1
+print(f"**DAUM NEWS 수집기**")
+print(f"총 {page-1} page, {count}건의 NEWS가 수집되었습니다.")

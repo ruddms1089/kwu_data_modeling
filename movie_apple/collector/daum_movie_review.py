@@ -20,6 +20,8 @@
 import time
 import re
 import math
+from datetime import datetime
+from movie_apple.db.review_dao import add_review
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -27,7 +29,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from datetime import datetime
 
 # 1.Selenium을 위한 ChromDriver 설치
 #   1-1.직접 다운로드
@@ -39,7 +40,7 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()),
                           options=options)
 
 # 2.URL 접속
-url = "https://movie.daum.net/moviedb/grade?movieId=165591"
+url = "https://movie.daum.net/moviedb/grade?movieId=169137"
 driver.get(url)
 time.sleep(1)
 
@@ -65,6 +66,7 @@ total_review_cnt = doc.select("span.txt_netizen")[0].get_text()  # 해당 영화
 num_review = int(re.sub(r"[^~0-9]", "", total_review_cnt))
 
 # math.ceil() 올림:  4.33333 → 5.0
+# 4?
 click_cnt = math.ceil((num_review - 10) / 30)  # 올림
 
 # 반복문
@@ -84,23 +86,30 @@ review_list = doc.select("ul.list_comment > li")
 for tag in review_list:
     # 5-4. 리뷰(댓글, 작성자, 평점, 날짜) 수집
     print("="*100)
-    review_score = tag.select("div.ratings")[0].get_text() # 평점
+    review_score = tag.select("div.ratings")[0].get_text()  # 평점
     print(f" - 평점: {review_score}")
 
-    review_writer = tag.select("a.link_nick > span")[1].get_text().strip() # 작성자
+    review_writer = tag.select("a.link_nick > span")[1].get_text().strip()  # 작성자
     print(f" - 작성자: {review_writer}")
 
-    review_reply = tag.select("p.desc_txt")[0].get_text().strip()  # 리뷰
+    review_reply = tag.select("p.desc_txt")[0].get_text().strip() # 댓글
     print(f" - 리뷰: {review_reply}")
 
-    original_date = tag.select("span.txt_date")[0].get_text()  #날짜
-    idx = original_date.rfind(".") # rfind : 뒤에서부터 찾아라~
+    original_date = tag.select("span.txt_date")[0].get_text()
+    idx = original_date.rfind(".")
     review_date = original_date[:idx]
     review_date = re.sub(r"[^~0-9]", "", review_date)
-    if len(review_date) <= 2: #3시간 전, 23시간 전
-        today = datetime.today() # 현재 날짜시간
-        review_date = str(today.year) + str(today.month) + str(today.day)
 
+    if len(review_date) <= 2:  # 3시간전, 23시간전
+        today = datetime.today()  # 현재 날짜시간
+        review_date = str(today.year) + str(today.month) + str(today.day)
     print(f" - 날짜: {review_date}")
 
-    # print(len(review_list)) : 전체 갯수 확인
+    data = {
+        "title": title,
+        "review": review_reply,
+        "score": review_score,
+        "writer": review_writer,
+        "reg_date": review_date
+    }
+    add_review(data)
